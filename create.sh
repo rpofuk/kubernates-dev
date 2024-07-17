@@ -7,40 +7,50 @@ set -euo pipefail
 # network access sudo iptables -A FORWARD -p all -i br0 -j ACCEPT
 
 
-export base_disk_file="ubuntu-vm-disk-base.qcow2"
-export user_pwd="no-secret"
+export work_dir=$PWD/target
+mkdir -p $work_dir
 
-if [[ ! -f ubuntu-vm-disk-base.qcow2 ]]; then 
+echo "Work dir: $work_dir"
+export base_disk_file="$work_dir/ubuntu-vm-disk-base.qcow2"
+export user_pwd="no-secret"
+export resp_file=$work_dir/resp.txt
+export pass_file=$work_dir/pass.txt
+
+
+echo "Checking if base is prepared"
+
+if [[ ! -f $work_dir/ubuntu-vm-disk-base.qcow2 ]]; then 
   echo "Base disk image does not exist, craeting new one"
-  if [[ ! -f ubuntu.img ]]; then 
+  if [[ ! -f $work_dir/ubuntu.img ]]; then 
     echo "Image is not yet downloaded so downaloding fresh one"	  
-    curl -Lo ubuntu.img 'https://cloud-images.ubuntu.com/noble/20240605.1/noble-server-cloudimg-amd64.img'
+    curl -Lo $work_dir/ubuntu.img 'https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img'
   else
     echo "Using exising image"
   fi
 
-  echo "no-secret" > pass.txt 
+  echo "no-secret" > $pass_file 
 
   echo "Create base disk used for all VM's"
-  qemu-img create -b ubuntu.img -F qcow2 -f qcow2 $base_disk_file 20G
-
+  qemu-img create -b $work_dir/ubuntu.img -F qcow2 -f qcow2 $base_disk_file 30G
+else 
+  echo "Using old base volume"
 fi
 
 
+echo "Going to create me some nodes"
 
 for name in "kubernetes-master"; do 
-  ./create_vm.sh $name
-  vm_ip=$(cat resp.txt)
+  ./scripts/create-vm.sh $name
+  vm_ip=$(cat $resp_file)
   echo "Setting up $name on $vm_ip"
   master_ip=$vm_ip
 
-  sshpass -f pass.txt scp -r scripts ubuntu@$vm_ip:/home/ubuntu/scripts
+  sshpass -f $pass_file scp -r scripts ubuntu@$vm_ip:/home/ubuntu/scripts
 
-  sshpass -f pass.txt ssh ubuntu@$vm_ip '/home/ubuntu/scripts/setup-node.sh '"$vm_ip"' '"$name"' '
-  sshpass -f pass.txt ssh ubuntu@$vm_ip '/home/ubuntu/scripts/master-init.sh '"$vm_ip"' '
+  sshpass -f $pass_file ssh ubuntu@$vm_ip '/home/ubuntu/scripts/setup-node.sh '"$vm_ip"' '"$name"' '
+  sshpass -f $pass_file ssh ubuntu@$vm_ip '/home/ubuntu/scripts/master-init.sh '"$vm_ip"' '
 
-  join_command="$(sshpass -f pass.txt ssh ubuntu@$vm_ip 'sudo kubeadm token create --print-join-command')"
-
+  join_command="$(sshpass -f $pass_file ssh ubuntu@$vm_ip 'sudo kubeadm token create --print-join-command')"
 
   echo "Join command: $join_command"
 done
@@ -49,13 +59,13 @@ echo "Creating nodes"
 
 for name in kubernetes-node1 kubernetes-node2 kubernetes-node3; do 
   echo "Working on $name"
-  ./create_vm.sh $name 
-  vm_ip=$(cat resp.txt)
+  ./scripts/create-vm.sh $name
+  vm_ip=$(cat $resp_file)
 
-  sshpass -f pass.txt scp -r scripts ubuntu@$vm_ip:/home/ubuntu/scripts
+  sshpass -f $pass_file scp -r scripts ubuntu@$vm_ip:/home/ubuntu/scripts
 
-  sshpass -f pass.txt ssh ubuntu@$vm_ip '/home/ubuntu/scripts/setup-node.sh '"$vm_ip"' '"$name"' '
-  sshpass -f pass.txt ssh ubuntu@$vm_ip '/home/ubuntu/scripts/worker-init.sh '"$vm_ip"' "'"$join_command"'"'
+  sshpass -f $pass_file ssh ubuntu@$vm_ip '/home/ubuntu/scripts/setup-node.sh '"$vm_ip"' '"$name"' '
+  sshpass -f $pass_file ssh ubuntu@$vm_ip '/home/ubuntu/scripts/worker-init.sh '"$vm_ip"' "'"$join_command"'"'
 
 done
 

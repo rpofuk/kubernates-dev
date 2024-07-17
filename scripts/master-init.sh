@@ -4,7 +4,9 @@ set -euo pipefail
 
 vm_ip=$1 
 
+echo "### Initializing cluster"
 sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --upload-certs --control-plane-endpoint=$vm_ip
+echo "#######################"
 
 
 mkdir -p $HOME/.kube
