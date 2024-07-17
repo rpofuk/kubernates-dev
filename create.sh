@@ -31,7 +31,7 @@ if [[ ! -f $work_dir/ubuntu-vm-disk-base.qcow2 ]]; then
   echo "no-secret" > $pass_file 
 
   echo "Create base disk used for all VM's"
-  qemu-img create -b $work_dir/ubuntu.img -F qcow2 -f qcow2 $base_disk_file 30G
+  qemu-img create -b $work_dir/ubuntu.img -F qcow2 -f qcow2 $base_disk_file 50G
 else 
   echo "Using old base volume"
 fi

@@ -13,7 +13,8 @@ echo "####################"
 
 echo "### Instal standrad tools"
 
-sudo apt install net-tools
+sudo apt install -y net-tools ipvsadm
+
 
 echo "####################"
 
@@ -69,9 +70,20 @@ net.ipv4.ip_forward = 1
 EOF
 
 sudo sysctl --system
+
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
 echo "###############################"
 
 echo "Prepare kubernates"
 sudo kubeadm config images pull
 echo "#####################"
+
+
+echo "Prepare volumegroup for LVM"
+sudo truncate -s 15G /opt/disk.img
+sudo losetup -f /opt/disk.img --show
+sudo pvcreate /dev/loop0
+sudo vgcreate lvmvg /dev/loop0   
 

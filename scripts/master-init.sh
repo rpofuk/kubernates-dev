@@ -4,6 +4,13 @@ set -euo pipefail
 
 vm_ip=$1 
 
+echo "### Install tools"
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+sudo ./get_helm.sh
+rm ./get_helm.sh
+echo "#################"
+
 echo "### Initializing cluster"
 sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --upload-certs --control-plane-endpoint=$vm_ip
 echo "#######################"
